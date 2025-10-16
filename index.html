@@ -555,9 +555,12 @@
                         ctx.fillText('EARTH SAVED!', 400, 280);
                         ctx.font = '18px monospace';
                         ctx.fillText('NASA activated the stabilizer!', 400, 320);
+                        ctx.fillText('Click anywhere to play again', 400, 360);
                     } else {
                         const nextLevelName = levels[currentLevel].name;
-                        ctx.fillText(`Entering ${nextLevelName}`, 400, 300);
+                        ctx.fillText(`Entering ${nextLevelName}`, 400, 280);
+                        ctx.font = '18px monospace';
+                        ctx.fillText('Click anywhere to continue', 400, 320);
                     }
                 }
 
@@ -726,6 +729,11 @@
 
                                 if (gameState === 'lost') {
                                     handleReset();
+                                    return;
+                                }
+                                
+                                if (gameState === 'won') {
+                                    handleNextLevel();
                                     return;
                                 }
 
