@@ -335,6 +335,12 @@
                     ctx.beginPath();
                     ctx.arc(wormhole.x, wormhole.y, WORMHOLE_RADIUS, 0, Math.PI * 2);
                     ctx.fill();
+                    
+                    // Goal label for wormhole
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '12px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Goal', wormhole.x, wormhole.y + WORMHOLE_RADIUS + 15);
                 }
 
                 bodies.forEach(body => {
@@ -452,7 +458,7 @@
                     ctx.fillStyle = '#ffffff';
                     ctx.font = '20px monospace';
                     ctx.textAlign = 'center';
-                    ctx.fillText('Configure gravity dampeners and press PLAY', 400, 40);
+                    ctx.fillText('Click on a celestial body to adjust its gravity dampener', 400, 40);
                 }
 
                 if (gameState === 'tutorial') {
@@ -779,14 +785,6 @@
                             }}
                         />
                     </div>
-
-                    {gameState === 'paused' && !selectedBodyData && (
-                        <div className="mt-4 p-4 bg-gray-800 rounded w-80 text-center">
-                            <p className="text-gray-300 text-sm">
-                                Click on a celestial body to adjust its gravity dampener
-                            </p>
-                        </div>
-                    )}
                 </div>
             );
         };
