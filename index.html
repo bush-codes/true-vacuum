@@ -459,6 +459,10 @@
                     ctx.font = '20px monospace';
                     ctx.textAlign = 'center';
                     ctx.fillText('Click on a celestial body to adjust its gravity dampener', 400, 40);
+                    
+                    // Bottom pause message
+                    ctx.font = '18px monospace';
+                    ctx.fillText('Game paused: Press Engage to unpause', 400, 580);
                 }
 
                 if (gameState === 'tutorial') {
@@ -564,10 +568,9 @@
                     ctx.fillStyle = '#ff0000';
                     ctx.font = '36px monospace';
                     ctx.textAlign = 'center';
-                    ctx.fillText('Universe Ended', 400, 280);
+                    ctx.fillText('You failed to reach Earth in time', 400, 300);
                     ctx.font = '18px monospace';
-                    ctx.fillText('The true vacuum caught up', 400, 320);
-                    ctx.fillText('Click anywhere to try again', 400, 360);
+                    ctx.fillText('Click anywhere to try again', 400, 340);
                 }
             }, [ship, bodies, wormhole, selectedBody, gameState, vacuumEdge, currentLevel]);
 
@@ -636,7 +639,7 @@
                                         onClick={handlePlay}
                                         className="flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold text-sm"
                                     >
-                                        <Play size={18} /> PLAY
+                                        <Play size={18} /> ENGAGE
                                     </button>
                                 )}
 
