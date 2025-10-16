@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>True Vacuum - Escape the End of Reality</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Lucide React icons as inline SVG components
+        const Play = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        );
+
+        const Pause = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+        );
+
+        const RotateCcw = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            </svg>
+        );
+
+        const ChevronRight = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        );
+
+        const MapPin = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+        );
+
+        const FalseVacuumGame = () => {
+            const canvasRef = useRef(null);
+            const [gameState, setGameState] = useState('title');
+            const [currentLevel, setCurrentLevel] = useState(1);
+            const [selectedBody, setSelectedBody] = useState(null);
+            const [showLevelSelect, setShowLevelSelect] = useState(false);
+            const animationRef = useRef(null);
+
+            const G = 100;
+            const SHIP_RADIUS = 24;
+            const WORMHOLE_RADIUS = 20;
+            const VACUUM_SPEED = 0.5;
+
+            const [ship, setShip] = useState({
+                x: 100,
+                y: 300,
+                vx: 2,
+                vy: 0,
+                trail: []
+            });
+
+            const [vacuumEdge, setVacuumEdge] = useState(-100);
+
+            const levels = [
+                {
+                    name: "Proxima Centauri",
+                    ship: { x: 100, y: 300, vx: 2, vy: 0 },
+                    wormhole: { x: 700, y: 300 },
+                    bodies: [
+                        { id: 1, x: 400, y: 300, mass: 1000, dampening: 1, type: 'planet', color: '#4A90E2' }
+                    ]
+                },
+                {
+                    name: "Sirius System",
+                    ship: { x: 100, y: 200, vx: 2.5, vy: 1 },
+                    wormhole: { x: 700, y: 400 },
+                    bodies: [
+                        { id: 1, x: 300, y: 250, mass: 800, dampening: 1, type: 'planet', color: '#E24A4A' },
+                        { id: 2, x: 500, y: 350, mass: 600, dampening: 1, type: 'moon', color: '#888888' }
+                    ]
+                },
+                {
+                    name: "Vega Outpost",
+                    ship: { x: 100, y: 300, vx: 3, vy: -0.5 },
+                    wormhole: { x: 700, y: 200 },
+                    bodies: [
+                        { id: 1, x: 250, y: 400, mass: 1200, dampening: 1, type: 'star', color: '#FDB813' },
+                        { id: 2, x: 450, y: 250, mass: 500, dampening: 1, type: 'planet', color: '#50C878' },
+                        { id: 3, x: 550, y: 350, mass: 300, dampening: 1, type: 'asteroid', color: '#A0A0A0' }
+                    ]
+                },
+                {
+                    name: "Alpha Centauri",
+                    ship: { x: 100, y: 250, vx: 2, vy: 1.5 },
+                    wormhole: { x: 700, y: 450 },
+                    bodies: [
+                        { id: 1, x: 300, y: 200, mass: 1000, dampening: 1, type: 'star', color: '#FF6B35' },
+                        { id: 2, x: 400, y: 400, mass: 800, dampening: 1, type: 'planet', color: '#4ECDC4' },
+                        { id: 3, x: 550, y: 300, mass: 400, dampening: 1, type: 'moon', color: '#95A3A4' },
+                        { id: 4, x: 200, y: 450, mass: 200, dampening: 1, type: 'asteroid', color: '#B0B0B0' }
+                    ]
+                },
+                {
+                    name: "Betelgeuse Nebula",
+                    ship: { x: 100, y: 300, vx: 2.5, vy: 0 },
+                    wormhole: { x: 700, y: 350 },
+                    bodies: [
+                        { id: 1, x: 350, y: 300, mass: 1500, dampening: 1, type: 'star', color: '#DC143C' },
+                        { id: 2, x: 250, y: 150, mass: 600, dampening: 1, type: 'planet', color: '#9B59B6' },
+                        { id: 3, x: 450, y: 450, mass: 600, dampening: 1, type: 'planet', color: '#3498DB' },
+                        { id: 4, x: 550, y: 250, mass: 300, dampening: 1, type: 'moon', color: '#7F8C8D' }
+                    ]
+                },
+                {
+                    name: "Andromeda Border",
+                    ship: { x: 100, y: 400, vx: 3, vy: -1 },
+                    wormhole: { x: 700, y: 200 },
+                    bodies: [
+                        { id: 1, x: 300, y: 300, mass: 1200, dampening: 1, type: 'star', color: '#F39C12' },
+                        { id: 2, x: 500, y: 400, mass: 800, dampening: 1, type: 'planet', color: '#16A085' },
+                        { id: 3, x: 400, y: 150, mass: 500, dampening: 1, type: 'planet', color: '#8E44AD' },
+                        { id: 4, x: 600, y: 300, mass: 350, dampening: 1, type: 'moon', color: '#95A5A6' },
+                        { id: 5, x: 200, y: 500, mass: 200, dampening: 1, type: 'asteroid', color: '#B0B0B0' }
+                    ]
+                },
+                {
+                    name: "Orion's Gate",
+                    ship: { x: 100, y: 300, vx: 2, vy: 1 },
+                    wormhole: { x: 700, y: 400 },
+                    bodies: [
+                        { id: 1, x: 350, y: 250, mass: 1400, dampening: 1, type: 'star', color: '#E67E22' },
+                        { id: 2, x: 250, y: 450, mass: 700, dampening: 1, type: 'planet', color: '#2ECC71' },
+                        { id: 3, x: 500, y: 350, mass: 700, dampening: 1, type: 'planet', color: '#3498DB' },
+                        { id: 4, x: 450, y: 150, mass: 400, dampening: 1, type: 'moon', color: '#7F8C8D' },
+                        { id: 5, x: 600, y: 450, mass: 250, dampening: 1, type: 'asteroid', color: '#A5A5A5' }
+                    ]
+                },
+                {
+                    name: "Sagittarius Cluster",
+                    ship: { x: 100, y: 250, vx: 2.5, vy: 0.5 },
+                    wormhole: { x: 700, y: 450 },
+                    bodies: [
+                        { id: 1, x: 300, y: 300, mass: 1600, dampening: 1, type: 'star', color: '#C0392B' },
+                        { id: 2, x: 450, y: 200, mass: 900, dampening: 1, type: 'planet', color: '#1ABC9C' },
+                        { id: 3, x: 350, y: 450, mass: 700, dampening: 1, type: 'planet', color: '#9B59B6' },
+                        { id: 4, x: 550, y: 350, mass: 500, dampening: 1, type: 'moon', color: '#95A3A4' },
+                        { id: 5, x: 200, y: 150, mass: 300, dampening: 1, type: 'moon', color: '#888888' },
+                        { id: 6, x: 600, y: 500, mass: 200, dampening: 1, type: 'asteroid', color: '#B0B0B0' }
+                    ]
+                },
+                {
+                    name: "Milky Way Core",
+                    ship: { x: 100, y: 300, vx: 2, vy: -0.5 },
+                    wormhole: { x: 700, y: 250 },
+                    bodies: [
+                        { id: 1, x: 400, y: 300, mass: 2000, dampening: 1, type: 'star', color: '#E74C3C' },
+                        { id: 2, x: 300, y: 150, mass: 800, dampening: 1, type: 'planet', color: '#3498DB' },
+                        { id: 3, x: 500, y: 450, mass: 800, dampening: 1, type: 'planet', color: '#2ECC71' },
+                        { id: 4, x: 250, y: 400, mass: 500, dampening: 1, type: 'moon', color: '#95A5A6' },
+                        { id: 5, x: 550, y: 200, mass: 500, dampening: 1, type: 'moon', color: '#7F8C8D' },
+                        { id: 6, x: 600, y: 400, mass: 300, dampening: 1, type: 'asteroid', color: '#A0A0A0' }
+                    ]
+                },
+                {
+                    name: "Earth - Final Approach",
+                    ship: { x: 100, y: 300, vx: 2.5, vy: 0 },
+                    wormhole: { x: 700, y: 300 },
+                    bodies: [
+                        { id: 1, x: 550, y: 300, mass: 1800, dampening: 1, type: 'star', color: '#F1C40F', label: 'Sun' },
+                        { id: 2, x: 650, y: 320, mass: 600, dampening: 1, type: 'planet', color: '#2980B9', label: 'Earth' },
+                        { id: 3, x: 300, y: 200, mass: 900, dampening: 1, type: 'planet', color: '#E67E22' },
+                        { id: 4, x: 350, y: 400, mass: 700, dampening: 1, type: 'planet', color: '#9B59B6' },
+                        { id: 5, x: 450, y: 300, mass: 400, dampening: 1, type: 'moon', color: '#95A3A4' },
+                        { id: 6, x: 200, y: 350, mass: 300, dampening: 1, type: 'moon', color: '#7F8C8D' },
+                        { id: 7, x: 500, y: 150, mass: 250, dampening: 1, type: 'asteroid', color: '#B0B0B0' }
+                    ]
+                }
+            ];
+
+            const [bodies, setBodies] = useState(levels[0].bodies);
+            const [wormhole, setWormhole] = useState(levels[0].wormhole);
+
+            useEffect(() => {
+                const level = levels[currentLevel - 1];
+                setShip({ ...level.ship, trail: [] });
+                setBodies(level.bodies);
+                setWormhole(level.wormhole);
+                setVacuumEdge(-100);
+                if (gameState !== 'title' && gameState !== 'tutorial') {
+                    setGameState('paused');
+                }
+                setSelectedBody(null);
+            }, [currentLevel]);
+
+            useEffect(() => {
+                if (gameState !== 'playing') return;
+
+                const gameLoop = () => {
+                    setShip(prevShip => {
+                        let { x, y, vx, vy, trail } = prevShip;
+
+                        bodies.forEach(body => {
+                            const dx = body.x - x;
+                            const dy = body.y - y;
+                            const distSq = dx * dx + dy * dy;
+                            const dist = Math.sqrt(distSq);
+
+                            if (dist > 1) {
+                                const force = (G * body.mass * body.dampening) / distSq;
+                                const ax = (force * dx) / dist;
+                                const ay = (force * dy) / dist;
+
+                                vx += ax * 0.016;
+                                vy += ay * 0.016;
+                            }
+                        });
+
+                        x += vx;
+                        y += vy;
+
+                        const newTrail = [...trail, { x, y }];
+                        if (newTrail.length > 50) newTrail.shift();
+
+                        return { x, y, vx, vy, trail: newTrail };
+                    });
+
+                    setVacuumEdge(prev => prev + VACUUM_SPEED);
+
+                    animationRef.current = requestAnimationFrame(gameLoop);
+                };
+
+                animationRef.current = requestAnimationFrame(gameLoop);
+
+                return () => {
+                    if (animationRef.current) {
+                        cancelAnimationFrame(animationRef.current);
+                    }
+                };
+            }, [gameState, bodies]);
+
+            useEffect(() => {
+                if (gameState !== 'playing') return;
+
+                if (currentLevel === 10) {
+                    const earth = bodies.find(b => b.id === 2);
+                    if (earth) {
+                        const dx = ship.x - earth.x;
+                        const dy = ship.y - earth.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const earthRadius = Math.sqrt(earth.mass) / 3;
+
+                        if (dist < earthRadius + SHIP_RADIUS) {
+                            setGameState('won');
+                        }
+                    }
+                } else {
+                    const dx = ship.x - wormhole.x;
+                    const dy = ship.y - wormhole.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < WORMHOLE_RADIUS + SHIP_RADIUS) {
+                        setGameState('won');
+                    }
+                }
+
+                if (ship.x < vacuumEdge) {
+                    setGameState('lost');
+                }
+
+                if (ship.x < 0 || ship.x > 800 || ship.y < 0 || ship.y > 600) {
+                    setGameState('lost');
+                }
+            }, [ship, gameState, wormhole, vacuumEdge, currentLevel, bodies]);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                const ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#0a0a1a';
+                ctx.fillRect(0, 0, 800, 600);
+
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < 100; i++) {
+                    const x = (i * 77) % 800;
+                    const y = (i * 131) % 600;
+                    ctx.fillRect(x, y, 1, 1);
+                }
+
+                ctx.fillStyle = '#ff0066';
+                ctx.fillRect(0, 0, vacuumEdge, 600);
+
+                const gradient = ctx.createLinearGradient(vacuumEdge - 30, 0, vacuumEdge + 30, 0);
+                gradient.addColorStop(0, 'rgba(255, 0, 102, 0)');
+                gradient.addColorStop(0.5, 'rgba(255, 0, 102, 0.8)');
+                gradient.addColorStop(1, 'rgba(255, 0, 102, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(vacuumEdge - 30, 0, 60, 600);
+
+                if (currentLevel < 10) {
+                    const wormholeGradient = ctx.createRadialGradient(
+                        wormhole.x, wormhole.y, 0,
+                        wormhole.x, wormhole.y, WORMHOLE_RADIUS
+                    );
+                    wormholeGradient.addColorStop(0, '#00ffff');
+                    wormholeGradient.addColorStop(0.5, '#0088ff');
+                    wormholeGradient.addColorStop(1, 'rgba(0, 136, 255, 0.3)');
+                    ctx.fillStyle = wormholeGradient;
+                    ctx.beginPath();
+                    ctx.arc(wormhole.x, wormhole.y, WORMHOLE_RADIUS, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                bodies.forEach(body => {
+                    const radius = Math.sqrt(body.mass) / 3;
+
+                    const outerGlow = ctx.createRadialGradient(
+                        body.x, body.y, 0,
+                        body.x, body.y, radius * 3
+                    );
+                    outerGlow.addColorStop(0, body.color);
+                    outerGlow.addColorStop(0.3, body.color + '99');
+                    outerGlow.addColorStop(0.6, body.color + '33');
+                    outerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.fillStyle = outerGlow;
+                    ctx.beginPath();
+                    ctx.arc(body.x, body.y, radius * 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const innerGlow = ctx.createRadialGradient(
+                        body.x, body.y, 0,
+                        body.x, body.y, radius * 1.5
+                    );
+                    innerGlow.addColorStop(0, '#ffffff');
+                    innerGlow.addColorStop(0.3, body.color);
+                    innerGlow.addColorStop(1, body.color);
+                    ctx.fillStyle = innerGlow;
+                    ctx.beginPath();
+                    ctx.arc(body.x, body.y, radius * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = body.color;
+                    ctx.beginPath();
+                    ctx.arc(body.x, body.y, radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (selectedBody === body.id) {
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(body.x, body.y, radius + 5, 0, Math.PI * 2);
+                        ctx.stroke();
+
+                        const uiY = body.y - radius - 60;
+                        const uiX = body.x;
+
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                        ctx.fillRect(uiX - 100, uiY, 200, 50);
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(uiX - 100, uiY, 200, 50);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '12px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`Gravity: ${(body.dampening * 100).toFixed(0)}%`, uiX, uiY + 18);
+
+                        ctx.fillStyle = '#444444';
+                        ctx.fillRect(uiX - 80, uiY + 28, 160, 8);
+
+                        ctx.fillStyle = '#00ff00';
+                        ctx.fillRect(uiX - 80, uiY + 28, 160 * body.dampening, 8);
+
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(uiX - 80 + 160 * body.dampening, uiY + 32, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    if (body.label) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '12px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(body.label, body.x, body.y + radius + 15);
+                    }
+                });
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ship.trail.forEach((point, i) => {
+                    if (i === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                });
+                ctx.stroke();
+
+                ctx.save();
+                ctx.translate(ship.x, ship.y);
+                const angle = Math.atan2(ship.vy, ship.vx);
+                ctx.rotate(angle);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(SHIP_RADIUS, 0);
+                ctx.lineTo(-SHIP_RADIUS, SHIP_RADIUS / 2);
+                ctx.lineTo(-SHIP_RADIUS, -SHIP_RADIUS / 2);
+                ctx.closePath();
+                ctx.fill();
+
+                if (gameState === 'playing') {
+                    ctx.fillStyle = '#00ffff';
+                    ctx.beginPath();
+                    ctx.moveTo(-SHIP_RADIUS, SHIP_RADIUS / 3);
+                    ctx.lineTo(-SHIP_RADIUS - 5, 0);
+                    ctx.lineTo(-SHIP_RADIUS, -SHIP_RADIUS / 3);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                if (gameState === 'paused') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '20px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Configure gravity dampeners and press PLAY', 400, 40);
+                }
+
+                if (gameState === 'tutorial') {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                    ctx.fillRect(0, 0, 800, 600);
+
+                    ctx.fillStyle = '#00ffff';
+                    ctx.font = 'bold 48px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('HOW TO PLAY', 400, 80);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '18px monospace';
+
+                    const instructions = [
+                        '1. CLICK on celestial bodies to select them',
+                        '',
+                        '2. ADJUST the gravity dampener slider that appears',
+                        '   - 0% = No gravity (body has no effect)',
+                        '   - 100% = Full gravity (maximum pull)',
+                        '',
+                        '3. Configure all bodies, then press PLAY',
+                        '',
+                        '4. Your ship will follow the gravity wells you created',
+                        '',
+                        '5. GOAL: Reach the cyan wormhole (or Earth on final level)',
+                        '',
+                        '6. AVOID: The red true vacuum expanding from the left',
+                        '',
+                        '7. If you fail, your dampener settings are kept',
+                        '   so you can quickly adjust and try again'
+                    ];
+
+                    instructions.forEach((line, i) => {
+                        ctx.fillText(line, 400, 150 + i * 26);
+                    });
+
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = 'bold 22px monospace';
+                    ctx.fillText('Click anywhere to start Level 1', 400, 560);
+                }
+
+                if (gameState === 'title') {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                    ctx.fillRect(0, 0, 800, 600);
+
+                    ctx.fillStyle = '#ff0066';
+                    ctx.font = 'bold 72px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('TRUE VACUUM', 400, 200);
+
+                    ctx.fillStyle = '#00ffff';
+                    ctx.font = '24px monospace';
+                    ctx.fillText('Escape the End of Reality', 400, 250);
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '16px monospace';
+                    ctx.textAlign = 'center';
+                    const storyLines = [
+                        'While fleeing an imperial attack, your sensors detected',
+                        'a catastrophic event: the universe\'s false vacuum has',
+                        'collapsed into a true vacuum state, ending all existence',
+                        'at the speed of light.',
+                        '',
+                        'Only your ship escaped through a wormhole network.',
+                        'NASA has a device that can stop it - but you must reach',
+                        'Earth before the true vacuum catches up.',
+                        '',
+                        'Use your gravitational dampeners to navigate the',
+                        'celestial bodies and jump through wormholes.'
+                    ];
+
+                    storyLines.forEach((line, i) => {
+                        ctx.fillText(line, 400, 300 + i * 22);
+                    });
+
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = 'bold 20px monospace';
+                    ctx.fillText('Click anywhere to begin', 400, 550);
+                }
+
+                if (gameState === 'won') {
+                    ctx.fillStyle = 'rgba(0, 100, 0, 0.8)';
+                    ctx.fillRect(0, 0, 800, 600);
+
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = '36px monospace';
+                    ctx.textAlign = 'center';
+                    if (currentLevel === 10) {
+                        ctx.fillText('EARTH SAVED!', 400, 280);
+                        ctx.font = '18px monospace';
+                        ctx.fillText('NASA activated the stabilizer!', 400, 320);
+                    } else {
+                        const nextLevelName = levels[currentLevel].name;
+                        ctx.fillText(`Entering ${nextLevelName}`, 400, 300);
+                    }
+                }
+
+                if (gameState === 'lost') {
+                    ctx.fillStyle = 'rgba(100, 0, 0, 0.8)';
+                    ctx.fillRect(0, 0, 800, 600);
+
+                    ctx.fillStyle = '#ff0000';
+                    ctx.font = '36px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Universe Ended', 400, 280);
+                    ctx.font = '18px monospace';
+                    ctx.fillText('The true vacuum caught up', 400, 320);
+                    ctx.fillText('Click anywhere to try again', 400, 360);
+                }
+            }, [ship, bodies, wormhole, selectedBody, gameState, vacuumEdge, currentLevel]);
+
+            const handleBodyClick = (bodyId) => {
+                if (gameState === 'paused') {
+                    setSelectedBody(bodyId);
+                }
+            };
+
+            const handleDampeningChange = (value) => {
+                setBodies(prev => prev.map(body =>
+                    body.id === selectedBody ? { ...body, dampening: value } : body
+                ));
+            };
+
+            const handlePlay = () => {
+                setGameState('playing');
+                setSelectedBody(null);
+            };
+
+            const handlePause = () => {
+                setGameState('paused');
+            };
+
+            const handleReset = () => {
+                const level = levels[currentLevel - 1];
+                setShip({ ...level.ship, trail: [] });
+                setVacuumEdge(-100);
+                setGameState('paused');
+                setSelectedBody(null);
+            };
+
+            const handleNextLevel = () => {
+                if (currentLevel < 10) {
+                    setCurrentLevel(prev => prev + 1);
+                } else {
+                    setCurrentLevel(1);
+                }
+            };
+
+            const handleStartGame = () => {
+                setGameState('tutorial');
+            };
+
+            const handleStartLevel = () => {
+                setGameState('paused');
+            };
+
+            const handleJumpToLevel = (levelNum) => {
+                setCurrentLevel(levelNum);
+                setShowLevelSelect(false);
+            };
+
+            const selectedBodyData = bodies.find(b => b.id === selectedBody);
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 p-4">
+                    {gameState !== 'title' && gameState !== 'tutorial' && (
+                        <div className="mb-4 text-center">
+                            <h1 className="text-3xl font-bold text-white mb-2">True Vacuum</h1>
+                            <p className="text-gray-300 mb-1">Level {currentLevel}: {levels[currentLevel - 1].name}</p>
+                            <p className="text-sm text-gray-400 max-w-2xl">
+                                The universe is ending behind you. Use gravity dampeners to navigate to the wormhole.
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="relative">
+                        <canvas
+                            ref={canvasRef}
+                            width={800}
+                            height={600}
+                            className="border-4 border-blue-500 rounded cursor-pointer"
+                            onClick={(e) => {
+                                if (gameState === 'title') {
+                                    handleStartGame();
+                                    return;
+                                }
+
+                                if (gameState === 'tutorial') {
+                                    handleStartLevel();
+                                    return;
+                                }
+
+                                if (gameState === 'lost') {
+                                    handleReset();
+                                    return;
+                                }
+
+                                if (gameState !== 'paused') return;
+                                const rect = canvasRef.current.getBoundingClientRect();
+                                const x = e.clientX - rect.left;
+                                const y = e.clientY - rect.top;
+
+                                let clickedBody = null;
+                                bodies.forEach(body => {
+                                    const dx = x - body.x;
+                                    const dy = y - body.y;
+                                    const dist = Math.sqrt(dx * dx + dy * dy);
+                                    const radius = Math.sqrt(body.mass) / 3;
+
+                                    if (dist < radius * 2.5) {
+                                        clickedBody = body;
+                                    }
+                                });
+
+                                if (clickedBody) {
+                                    handleBodyClick(clickedBody.id);
+                                } else if (selectedBody) {
+                                    const body = bodies.find(b => b.id === selectedBody);
+                                    if (body) {
+                                        const radius = Math.sqrt(body.mass) / 3;
+                                        const uiY = body.y - radius - 60;
+                                        const uiX = body.x;
+
+                                        if (x >= uiX - 100 && x <= uiX + 100 && y >= uiY && y <= uiY + 50) {
+                                            if (x >= uiX - 80 && x <= uiX + 80 && y >= uiY + 24 && y <= uiY + 40) {
+                                                const sliderValue = (x - (uiX - 80)) / 160;
+                                                handleDampeningChange(Math.max(0, Math.min(1, sliderValue)));
+                                            }
+                                        } else {
+                                            setSelectedBody(null);
+                                        }
+                                    }
+                                }
+                            }}
+                            onMouseMove={(e) => {
+                                if (gameState !== 'paused' || !e.buttons) return;
+                                const rect = canvasRef.current.getBoundingClientRect();
+                                const x = e.clientX - rect.left;
+                                const y = e.clientY - rect.top;
+
+                                if (selectedBody) {
+                                    const body = bodies.find(b => b.id === selectedBody);
+                                    if (body) {
+                                        const radius = Math.sqrt(body.mass) / 3;
+                                        const uiY = body.y - radius - 60;
+                                        const uiX = body.x;
+
+                                        if (x >= uiX - 80 && x <= uiX + 80 && y >= uiY + 24 && y <= uiY + 40) {
+                                            const sliderValue = (x - (uiX - 80)) / 160;
+                                            handleDampeningChange(Math.max(0, Math.min(1, sliderValue)));
+                                        }
+                                    }
+                                }
+                            }}
+                        />
+                    </div>
+
+                    {gameState !== 'title' && gameState !== 'tutorial' && (
+                        <div className="mt-4 flex gap-4 items-center">
+                            {gameState === 'paused' && (
+                                <button
+                                    onClick={handlePlay}
+                                    className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded font-bold"
+                                >
+                                    <Play size={20} /> PLAY
+                                </button>
+                            )}
+
+                            {gameState === 'playing' && (
+                                <button
+                                    onClick={handlePause}
+                                    className="flex items-center gap-2 px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded font-bold"
+                                >
+                                    <Pause size={20} /> PAUSE
+                                </button>
+                            )}
+
+                            <button
+                                onClick={handleReset}
+                                className="flex items-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded"
+                            >
+                                <RotateCcw size={20} /> Reset
+                            </button>
+
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowLevelSelect(!showLevelSelect)}
+                                    className="flex items-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded"
+                                >
+                                    <MapPin size={20} /> Jump
+                                </button>
+
+                                {showLevelSelect && (
+                                    <div className="absolute bottom-full mb-2 right-0 bg-gray-800 border-2 border-purple-500 rounded p-2 grid grid-cols-2 gap-2 w-64">
+                                        {levels.map((level, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => handleJumpToLevel(index + 1)}
+                                                className={`px-3 py-2 rounded text-sm ${
+                                                    currentLevel === index + 1
+                                                        ? 'bg-purple-600 text-white'
+                                                        : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                                                }`}
+                                            >
+                                                {index + 1}. {level.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {gameState === 'won' && (
+                                <button
+                                    onClick={handleNextLevel}
+                                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold"
+                                >
+                                    {currentLevel === 10 ? 'Play Again' : 'Next Level'} <ChevronRight size={20} />
+                                </button>
+                            )}
+
+                            {gameState === 'lost' && (
+                                <button
+                                    onClick={handleReset}
+                                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded font-bold"
+                                >
+                                    Try Again
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {gameState === 'paused' && !selectedBodyData && (
+                        <div className="mt-4 p-4 bg-gray-800 rounded w-80 text-center">
+                            <p className="text-gray-300 text-sm">
+                                Click on a celestial body to adjust its gravity dampener
+                            </p>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<FalseVacuumGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>
